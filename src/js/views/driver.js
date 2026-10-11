@@ -20,11 +20,15 @@ function skeletonIdle(t, bus) {
   return `
     <section class="driver-view" id="driverIdle">
       <div class="announcement" id="driverReminder" hidden></div>
-      <div class="mute">${t('hello', { name: bus?.driverName ?? '' })}</div>
-      <div class="mute">${bus?.label ?? ''}</div>
-      <div class="num" id="nextDepartureNum" style="margin-top:24px"></div>
-      <div class="mute" style="margin-top:6px">${t('nextDeparture')}</div>
-      <button class="text-link" id="signOutBtn" style="margin-top:22px">${t('notYouSignOut')}</button>
+      <div class="driver-badge">
+        <span class="driver-avatar" id="driverAvatar">?</span>
+        <span class="driver-id"><b>${t('hello', { name: bus?.driverName ?? '' })}</b><span class="mute">${bus?.label ?? ''}</span></span>
+      </div>
+      <div class="trip-plate">
+        <div class="mute trip-label">${t('nextDeparture')}</div>
+        <div class="num" id="nextDepartureNum"></div>
+      </div>
+      <button class="text-link" id="signOutBtn">${t('notYouSignOut')}</button>
     </section>
   `;
 }
@@ -32,14 +36,23 @@ function skeletonIdle(t, bus) {
 function skeletonLive(t) {
   return `
     <section class="driver-view" id="driverLive">
-      <div class="live-pill on"><i></i><span>${t('trackingOn')}</span></div>
-      <div class="num speed-num"><span id="speedVal">0</span><span class="unit">km/h</span></div>
-      <div class="driver-kv">
-        <div><span class="mute">${t('nextStop')}</span><b id="nextStopName"></b></div>
-        <div><span class="mute">${t('boarded')}</span><b id="boardedCount">0</b></div>
+      <div class="plate-head">
+        <img src="/logo-daust.png" alt="DAUST" class="student-logo" onerror="this.remove()" />
+        <div class="live-pill on"><i></i><span>${t('trackingOn')}</span></div>
       </div>
-      <div class="driver-map" id="driverMap"></div>
-      <div class="mute" id="lastStopReached" style="margin-top:14px;color:var(--ok);font-weight:700" hidden>${t('lastStopReached')}</div>
+      <div class="speed-plate">
+        <div class="num speed-num"><span id="speedVal">0</span><span class="unit">km/h</span></div>
+        <div class="driver-kv">
+          <div><span class="mute">${t('nextStop')}</span><b id="nextStopName">–</b></div>
+          <div><span class="mute">${t('boarded')}</span><b id="boardedCount">0</b></div>
+        </div>
+      </div>
+      <div class="map-shell">
+        <div id="driverMap"></div>
+        <button class="map-recenter" id="driverRecenterBtn" aria-label="Recenter map">⌖</button>
+        <div class="map-caption">${t('figLine')}</div>
+      </div>
+      <div class="mute" id="lastStopReached" style="margin-top:10px;color:var(--ok);font-weight:700" hidden>${t('lastStopReached')}</div>
     </section>
   `;
 }
@@ -52,6 +65,11 @@ export function render(root, { store, t, go }) {
     if (root.dataset.view === 'driver-live') destroy();
     root.innerHTML = skeletonIdle(t, d.bus);
     root.dataset.view = 'driver-idle';
+    const avatar = document.getElementById('driverAvatar');
+    if (avatar) {
+      const initials = (d.bus?.driverName ?? '').split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+      avatar.textContent = initials || '–';
+    }
     document.getElementById('signOutBtn').addEventListener('click', () => {
       setDriverToken(null);
       setStoredDriverBus(null);
@@ -108,6 +126,13 @@ export function render(root, { store, t, go }) {
     }
     document.getElementById('nextStopName').textContent = nearest.name;
     document.getElementById('lastStopReached').hidden = !(nearest === stops[stops.length - 1] && nearestDist < 60);
+  }
+
+  const driverRecenterBtn = document.getElementById('driverRecenterBtn');
+  if (driverRecenterBtn) {
+    driverRecenterBtn.onclick = () => {
+      if (map && stops.length) fitToStops(map, stops);
+    };
   }
 }
 
