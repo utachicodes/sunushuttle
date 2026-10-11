@@ -182,9 +182,11 @@ export function render(root, { store, t, lang }) {
     });
   }
 
-  document.getElementById('departuresRow').innerHTML = (data?.departures ?? [])
-    .map((d) => `<span class="dep-chip">${escapeHtml(d)}</span>`)
-    .join('');
+  const depRow = document.getElementById('departuresRow');
+  const times = data?.departures ?? [];
+  depRow.innerHTML = times.length
+    ? `<span class="dep-label">${t('today')}</span>${times.map((d) => `<span>${escapeHtml(d)}</span>`).join('<span class="dep-dot">·</span>')}`
+    : '';
 
   const fill = document.getElementById('routeFill');
   const dots = document.getElementById('routeStops');
@@ -248,10 +250,8 @@ function maybeNotify(minutes, stop, state, setState, t) {
 
 export function renderBar(bar, { store, t }) {
   const { state, setState } = store;
-  const bus = activeBus(state.data);
   bar.innerHTML = `
     <button class="btn btn-primary" id="notifyBtn" aria-pressed="${state.notify}">${state.notify ? '✓ ' + t('notifyOn') : t('notify')}</button>
-    <button class="btn btn-ghost" id="boardBtn" ${bus ? '' : 'hidden'}>${t('boarding')}</button>
   `;
   document.getElementById('notifyBtn').addEventListener('click', async () => {
     const next = !state.notify;
@@ -265,15 +265,6 @@ export function renderBar(bar, { store, t }) {
       } catch { /* ignore */ }
     }
   });
-  const boardBtn = document.getElementById('boardBtn');
-  if (boardBtn && bus) {
-    boardBtn.addEventListener('click', async () => {
-      try {
-        await api.board(bus.id);
-        showToast(t('boardingNoted'));
-      } catch { /* best effort */ }
-    });
-  }
 }
 
 function escapeHtml(s) {

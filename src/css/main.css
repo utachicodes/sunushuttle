@@ -402,20 +402,11 @@ main {
 .route-picker::-webkit-scrollbar { display: none; }
 .route-chip { min-height: 38px; padding: 0 16px; font-size: 13px; }
 
-.departures-row { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 8px 16px 10px; flex: none; scrollbar-width: none; }
+.departures-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex: none; white-space: nowrap; overflow-x: auto; padding: 8px 16px 10px; font-size: 13px; font-weight: 700; color: var(--ink-soft); scrollbar-width: none; }
 .departures-row::-webkit-scrollbar { display: none; }
-.dep-chip {
-  flex: none;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--ink);
-  background: var(--card);
-  border: 2px solid var(--ink);
-  padding: 6px 13px;
-  border-radius: 10px;
-  box-shadow: 2px 2px 0 var(--ink);
-}
+.dep-label { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--orange-deep); }
+.dep-dot { color: var(--line-deep); }
+.departures-row > span:not(.dep-label):not(.dep-dot) { letter-spacing: 0.04em; }
 
 /* Bottom action bar */
 .action-bar {
@@ -654,7 +645,6 @@ img { max-width: 100%; }
 .admin-row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stop-edit-row .field { min-width: 0; }
 .driver-kv b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dep-chip { max-width: 100%; }
 
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; }
