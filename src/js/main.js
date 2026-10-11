@@ -31,7 +31,7 @@ const app = document.getElementById('app');
 app.innerHTML = `
   <header class="app-header">
     <button class="icon-btn" id="backBtn" aria-label="Back" hidden>←</button>
-    <div class="brand">SunuShuttle</div>
+    <div class="brand"><img src="/logo-daust.png" alt="DAUST" class="brand-logo" onerror="this.remove()" />SunuShuttle</div>
     <button class="icon-btn" id="langBtn" aria-label="Language"></button>
   </header>
   <main id="viewRoot"></main>
@@ -109,9 +109,34 @@ function managePolling(state) {
   }
 }
 
+function routeIdForView(state) {
+  if ((state.view === 'driver' || state.view === 'driver-login') && state.driver.bus?.routeId) {
+    return state.driver.bus.routeId;
+  }
+  return state.selectedRouteId ?? state.data?.route?.id ?? null;
+}
+
+async function loadRoutes() {
+  try {
+    const { routes } = await api.routes();
+    const patch = { routes: routes ?? [] };
+    const ids = new Set((routes ?? []).map((r) => r.id));
+    if (!ids.has(store.state.selectedRouteId)) {
+      patch.selectedRouteId = routes?.[0]?.id ?? null;
+      patch.selectedStopIndex = 0;
+      try {
+        if (patch.selectedRouteId) localStorage.setItem('sunushuttle:routeId', patch.selectedRouteId);
+      } catch { /* ignore */ }
+    }
+    store.setState(patch);
+  } catch {
+    /* routes stay empty, state falls back to the default route */
+  }
+}
+
 async function fetchState() {
   try {
-    const data = await api.state();
+    const data = await api.state(routeIdForView(store.state));
     store.setState({ data, loadError: false });
   } catch {
     store.setState({ loadError: true });
@@ -121,5 +146,5 @@ async function fetchState() {
 store.subscribe(render);
 store.setState({ view: viewFromHash() });
 
-// Prime student data immediately so the first paint is not a blank number.
-fetchState();
+// Prime routes + student data immediately so the first paint is not blank.
+loadRoutes().finally(fetchState);
