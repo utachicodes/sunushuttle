@@ -1,5 +1,5 @@
 import { createMap, drawRoute, fitToStops, createBusMarker, createLayerGroup } from '../map.js';
-import { etaMinutes } from '../geo.js';
+import { etaMinutes, routeFraction, cumulativeStopDistances } from '../geo.js';
 import { showToast } from '../toast.js';
 import { translate } from '../i18n.js';
 import { api } from '../api.js';
@@ -10,6 +10,7 @@ let busLayer = null;
 let busMarkers = new Map();
 let drawnStopsKey = '';
 let fitted = false;
+let fittedRoute = null;
 
 function persistStopIndex(i) {
   try { localStorage.setItem('sunushuttle:stopIndex', String(i)); } catch { /* ignore */ }
@@ -24,11 +25,29 @@ function skeleton(t) {
     <section class="student-view">
       <div class="announcement" id="announcement" hidden></div>
       <div class="status-strip">
-        <div class="live-pill" id="livePill"><i></i><span id="liveLabel"></span></div>
-        <div class="num" id="etaNumber" aria-live="polite"></div>
-        <div class="mute sub" id="etaSub"></div>
+        <div class="route-picker" id="routePicker" role="listbox"></div>
+        <div class="plate-head">
+          <img src="/logo-daust.png" alt="DAUST" class="student-logo" onerror="this.remove()" />
+          <div class="live-pill" id="livePill"><i></i><span id="liveLabel"></span></div>
+        </div>
       </div>
-      <div class="map-shell"><div id="studentMap" style="width:100%;height:100%"></div></div>
+      <div class="map-shell">
+        <div id="studentMap"></div>
+        <div class="eta-float">
+          <div class="num" id="etaNumber" aria-live="polite"></div>
+          <div class="mute sub" id="etaSub"></div>
+        </div>
+        <button class="map-recenter" id="recenterBtn" aria-label="Recenter map">⌖</button>
+        <div class="map-caption">${t('figLine')}</div>
+      </div>
+      <div class="route-wrap">
+        <div class="route-diagram" id="routeDiagram" aria-hidden="true">
+          <div class="route-line"></div>
+          <div class="route-fill" id="routeFill"></div>
+          <div class="route-stops" id="routeStops"></div>
+        </div>
+        <div class="mute line-legend">${t('lineLegend')}</div>
+      </div>
       <div class="stop-picker" id="stopPicker" role="listbox" aria-label="${t('yourStop')}"></div>
       <div class="departures-row" id="departuresRow"></div>
     </section>
@@ -51,7 +70,29 @@ export function render(root, { store, t, lang }) {
     busLayer = createLayerGroup(map);
     drawnStopsKey = '';
     fitted = false;
+    fittedRoute = null;
     busMarkers = new Map();
+  }
+
+  const routes = state.routes ?? [];
+  const pickerEl = document.getElementById('routePicker');
+  if (pickerEl && routes.length > 1) {
+    const routesKey = routes.map((r) => r.id).join(',') + ':' + (state.selectedRouteId ?? state.data?.route?.id);
+    if (pickerEl.dataset.key !== routesKey) {
+      pickerEl.dataset.key = routesKey;
+      const activeId = state.selectedRouteId ?? state.data?.route?.id;
+      pickerEl.innerHTML = routes
+        .map(
+          (r) => `<button class="stop-chip route-chip${r.id === activeId ? ' sel' : ''}" data-route="${r.id}" role="option" aria-selected="${r.id === activeId}">${escapeHtml(r.name)}</button>`
+        )
+        .join('');
+      pickerEl.querySelectorAll('[data-route]').forEach((btn) => {
+        btn.addEventListener('click', () => selectRoute(btn.dataset.route));
+      });
+    }
+    pickerEl.hidden = false;
+  } else if (pickerEl) {
+    pickerEl.hidden = true;
   }
 
   const announcementEl = document.getElementById('announcement');
@@ -70,29 +111,30 @@ export function render(root, { store, t, lang }) {
   if (stopsKey && stopsKey !== drawnStopsKey) {
     drawRoute(map, routeLayer, stops, state.selectedStopIndex, (i) => selectStop(i));
     drawnStopsKey = stopsKey;
-    if (!fitted) {
+    if (!fitted || fittedRoute !== (data?.route?.id ?? null)) {
       fitToStops(map, stops);
       fitted = true;
+      fittedRoute = data?.route?.id ?? null;
     }
   } else if (stopsKey) {
     drawRoute(map, routeLayer, stops, state.selectedStopIndex, (i) => selectStop(i));
   }
 
-  const bus = activeBus(data);
-  const liveIds = new Set(bus ? [bus.id] : []);
+  const buses = data?.buses ?? [];
+  const bus = buses[0] ?? null;
+  const liveIds = new Set(buses.map((b) => b.id));
   for (const [id, marker] of busMarkers) {
     if (!liveIds.has(id)) {
       busLayer.removeLayer(marker);
       busMarkers.delete(id);
     }
   }
-  if (bus) {
-    let marker = busMarkers.get(bus.id);
+  for (const b of buses) {
+    const marker = busMarkers.get(b.id);
     if (!marker) {
-      marker = createBusMarker(busLayer, [bus.lat, bus.lng], bus.label);
-      busMarkers.set(bus.id, marker);
+      busMarkers.set(b.id, createBusMarker(busLayer, [b.lat, b.lng], b.label));
     } else {
-      marker._moveTo([bus.lat, bus.lng], 2800);
+      marker._moveTo([b.lat, b.lng], 2800);
     }
   }
 
@@ -140,13 +182,55 @@ export function render(root, { store, t, lang }) {
     });
   }
 
-  document.getElementById('departuresRow').textContent = data?.departures?.length
-    ? data.departures.join('   ')
-    : '';
+  document.getElementById('departuresRow').innerHTML = (data?.departures ?? [])
+    .map((d) => `<span class="dep-chip">${escapeHtml(d)}</span>`)
+    .join('');
+
+  const fill = document.getElementById('routeFill');
+  const dots = document.getElementById('routeStops');
+  if (fill && dots) {
+    if (bus && stops.length > 1) {
+      const dists = cumulativeStopDistances(stops);
+      const total = dists[dists.length - 1] || 1;
+      fill.style.width = `${Math.round(routeFraction({ lat: bus.lat, lng: bus.lng }, stops) * 100)}%`;
+      const dotsKey = `${stopsKey}:${state.selectedStopIndex}`;
+      if (dots.dataset.key !== dotsKey) {
+        dots.dataset.key = dotsKey;
+        dots.innerHTML = stops
+          .map(
+            (s, i) =>
+              `<i style="left:${((dists[i] / total) * 100).toFixed(2)}%" class="${i === state.selectedStopIndex ? 'sel' : ''}" title="${escapeHtml(s.name)}"></i>`
+          )
+          .join('');
+      }
+    } else {
+      fill.style.width = '0%';
+      dots.innerHTML = '';
+      dots.dataset.key = '';
+    }
+  }
 
   function selectStop(i) {
     persistStopIndex(i);
     setState({ selectedStopIndex: i, notifiedForStop: null });
+  }
+
+  async function selectRoute(id) {
+    try { localStorage.setItem('sunushuttle:routeId', id); } catch { /* ignore */ }
+    setState({ selectedRouteId: id, selectedStopIndex: 0, notifiedForStop: null, loadError: false });
+    try {
+      const next = await api.state(id);
+      setState({ data: next });
+    } catch {
+      setState({ loadError: true });
+    }
+  }
+
+  const recenterBtn = document.getElementById('recenterBtn');
+  if (recenterBtn) {
+    recenterBtn.onclick = () => {
+      if (map && stops.length) fitToStops(map, stops);
+    };
   }
 }
 
@@ -206,4 +290,5 @@ export function destroy() {
   busMarkers = new Map();
   drawnStopsKey = '';
   fitted = false;
+  fittedRoute = null;
 }

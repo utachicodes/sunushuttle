@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 
 const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const TILE_SUBDOMAINS = 'abc';
 
 export function createMap(container) {
   const map = L.map(container, {
@@ -10,27 +11,29 @@ export function createMap(container) {
     attributionControl: true,
     scrollWheelZoom: false,
   });
-  L.control.zoom({ position: 'bottomright' }).addTo(map);
-  L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map);
+  L.control.zoom({ position: 'bottomleft' }).addTo(map);
+  L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, subdomains: TILE_SUBDOMAINS, maxZoom: 20 }).addTo(map);
   map.setView([14.6937, -17.4441], 13);
+  // The pane can still be settling into its flex size on first paint.
+  requestAnimationFrame(() => map.invalidateSize());
   return map;
 }
 
-function stopIcon(isSelected) {
+function stopIcon(isSelected, n) {
   return L.divIcon({
     className: '',
-    html: `<span class="map-stop${isSelected ? ' sel' : ''}"></span>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<span class="map-stop${isSelected ? ' sel' : ''}"><b>${n}</b></span>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
 }
 
 function busIcon() {
   return L.divIcon({
     className: '',
-    html: '<span class="map-bus"></span>',
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    html: '<span class="map-bus"><span class="map-bus-ring"></span></span>',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
   });
 }
 
@@ -39,10 +42,11 @@ export function drawRoute(map, layerGroup, stops, selectedIndex, onSelectStop) {
   if (stops.length < 2) return;
 
   const latlngs = stops.map((s) => [s.lat, s.lng]);
-  L.polyline(latlngs, { color: '#0f2c50', weight: 4, opacity: 0.85 }).addTo(layerGroup);
+  L.polyline(latlngs, { color: '#dd8a12', weight: 9, opacity: 0.55, lineCap: 'round' }).addTo(layerGroup);
+  L.polyline(latlngs, { color: '#16305a', weight: 2.5, opacity: 0.95 }).addTo(layerGroup);
 
   stops.forEach((stop, i) => {
-    const marker = L.marker([stop.lat, stop.lng], { icon: stopIcon(i === selectedIndex) });
+    const marker = L.marker([stop.lat, stop.lng], { icon: stopIcon(i === selectedIndex, i + 1) });
     marker.bindTooltip(stop.name, { direction: 'top', offset: [0, -8] });
     if (onSelectStop) marker.on('click', () => onSelectStop(i));
     marker.addTo(layerGroup);
