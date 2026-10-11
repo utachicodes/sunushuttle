@@ -21,9 +21,61 @@ const VIEWS = {
   admin: adminView,
 };
 
-const STATE_POLL_MS = 3000;
+const POLL_LIVE_MS = 2500;
+const POLL_IDLE_MS = 15000;
+const FULL_REFRESH_EVERY = 12; // re-pull static data ~every 30s while live
+let livePolls = 0;
 
 const store = createStore();
+
+function routeIsLive() {
+  return (store.state.data?.buses?.length ?? 0) > 0;
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function schedulePoll(delayMs) {
+  stopPolling();
+  pollTimer = setTimeout(tick, delayMs);
+}
+
+async function tick() {
+  pollTimer = null;
+  // Static payload (stops, departures, message) is cached; only the tiny
+  // live feed is polled hot, with a periodic full refresh for consistency.
+  livePolls += 1;
+  if (!store.state.data || livePolls % FULL_REFRESH_EVERY === 0) {
+    await fetchState();
+  } else {
+    await fetchLive();
+  }
+  schedulePoll(routeIsLive() ? POLL_LIVE_MS : POLL_IDLE_MS);
+}
+
+function managePolling(state) {
+  const needsPolling =
+    (state.view === 'student' || (state.view === 'driver' && state.driver.live)) && !document.hidden;
+  if (!needsPolling) {
+    stopPolling();
+    return;
+  }
+  if (!pollTimer) tick();
+}
+
+window.addEventListener('offline', () => store.setState({ offline: true }));
+window.addEventListener('online', () => store.setState({ offline: false }));
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    livePolls = 0; // returning tab gets a full refresh immediately
+    fetchState();
+  }
+  managePolling(store.state);
+});
 let activeView = null;
 let pollTimer = null;
 
@@ -63,9 +115,6 @@ function viewFromHash() {
   return VIEWS[hash] ? hash : 'home';
 }
 
-window.addEventListener('offline', () => store.setState({ offline: true }));
-window.addEventListener('online', () => store.setState({ offline: false }));
-
 window.addEventListener('popstate', () => {
   store.setState({ view: viewFromHash() });
 });
@@ -98,14 +147,12 @@ function render() {
   managePolling(state);
 }
 
-function managePolling(state) {
-  const needsPolling = state.view === 'student' || (state.view === 'driver' && state.driver.live);
-  if (needsPolling && !pollTimer) {
-    fetchState();
-    pollTimer = setInterval(fetchState, STATE_POLL_MS);
-  } else if (!needsPolling && pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
+async function fetchLive() {
+  try {
+    const { buses } = await api.live(routeIdForView(store.state));
+    store.setState({ data: { ...(store.state.data ?? {}), buses: buses ?? [] }, loadError: false });
+  } catch {
+    store.setState({ loadError: true });
   }
 }
 
