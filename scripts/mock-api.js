@@ -145,7 +145,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, {
       buses: state.buses
         .filter((b) => b.routeId === routeId)
-        .map((b) => ({ ...busPosition(b), id: b.id, label: b.label, speedKmh: b.speedKmh, heading: null, boarded: b.boarded, updatedAt: new Date().toISOString() })),
+        .map((b) => ({ ...busPosition(b), id: b.id, label: b.label, speedKmh: b.speedKmh, heading: null, boarded: b.boarded, alert: b.alert ?? null, updatedAt: new Date().toISOString() })),
       at: new Date().toISOString(),
     });
   }
@@ -160,7 +160,7 @@ const server = http.createServer(async (req, res) => {
       message: state.messages[routeId] ?? '',
       buses: state.buses
         .filter((b) => b.routeId === routeId)
-        .map((b) => ({ ...busPosition(b), id: b.id, label: b.label, speedKmh: b.speedKmh, heading: null, boarded: b.boarded, updatedAt: new Date().toISOString() })),
+        .map((b) => ({ ...busPosition(b), id: b.id, label: b.label, speedKmh: b.speedKmh, heading: null, boarded: b.boarded, alert: b.alert ?? null, updatedAt: new Date().toISOString() })),
     });
   }
 
@@ -200,8 +200,21 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'POST' && path === '/api/driver/trip-end') {
     const trip = state.openTrip;
     state.openTrip = null;
-    for (const b of state.buses) b.driven = false;
+    for (const b of state.buses) {
+      b.driven = false;
+      b.alert = null;
+    }
     return send(res, 200, { tripId: trip?.tripId ?? null, boarded: state.buses[0].boarded });
+  }
+
+  if (req.method === 'POST' && path === '/api/driver/alert') {
+    if (!state.openTrip) return send(res, 400, { error: 'No active trip' });
+    const { issue } = await readBody(req);
+    const bus = state.buses[0];
+    if (issue === 'clear' || !issue) bus.alert = null;
+    else if (['traffic', 'late', 'breakdown'].includes(issue)) bus.alert = issue;
+    else return send(res, 400, { error: 'Unknown issue' });
+    return send(res, 200, { ok: true, issue: bus.alert });
   }
 
   // Admin auth + CRUD (in-memory).
