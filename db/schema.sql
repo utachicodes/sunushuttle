@@ -62,6 +62,14 @@ create table if not exists announcements (
   updated_at timestamptz not null default now()
 );
 
+-- One live incident per open trip, set by the driver in one tap
+-- (traffic jam, breakdown, running late). Cleared when the trip ends.
+create table if not exists trip_alerts (
+  trip_id uuid primary key references trips(id) on delete cascade,
+  issue text not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists admins (
   id uuid primary key default gen_random_uuid(),
   username text unique not null,

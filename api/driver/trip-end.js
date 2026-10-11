@@ -12,6 +12,9 @@ export default withErrors(async (req, res) => {
     where bus_id = ${claims.busId} and ended_at is null
     returning id, boarded_count
   `;
+  if (trip) {
+    await sql`delete from trip_alerts where trip_id = ${trip.id}`;
+  }
 
   send(res, 200, { tripId: trip?.id ?? null, boarded: trip?.boarded_count ?? 0 });
 });

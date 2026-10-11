@@ -18,10 +18,11 @@ export default withErrors(async (req, res) => {
     sql`
       select b.id, b.label,
              p.lat, p.lng, p.speed_kmh, p.heading, p.updated_at,
-             t.id as trip_id, t.boarded_count
+             t.id as trip_id, t.boarded_count, a.issue as alert
       from buses b
       join positions p on p.bus_id = b.id
       join trips t on t.id = p.trip_id and t.ended_at is null
+      left join trip_alerts a on a.trip_id = t.id
       where b.route_id = ${route.id}
         and p.updated_at > now() - make_interval(secs => ${LIVE_WINDOW_SECONDS})
     `,
@@ -41,6 +42,7 @@ export default withErrors(async (req, res) => {
       speedKmh: b.speed_kmh,
       heading: b.heading,
       boarded: b.boarded_count,
+      alert: b.alert ?? null,
       updatedAt: b.updated_at,
     })),
   });
