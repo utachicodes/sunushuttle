@@ -93,6 +93,7 @@ export function setAdminToken(token) {
 
 export const api = {
   state: (routeId) => request(routeId ? `/api/state?route=${routeId}` : '/api/state'),
+  routes: () => request('/api/routes'),
 
   driverLogin: (pin) => request('/api/driver/login', { method: 'POST', body: { pin } }),
   tripStart: () => request('/api/driver/trip-start', { method: 'POST', token: getDriverToken() }),
@@ -107,25 +108,34 @@ export const api = {
 
   adminLogin: (username, password) =>
     request('/api/admin/login', { method: 'POST', body: { username, password } }),
-  getStops: () => request('/api/admin/stops', { token: getAdminToken() }),
-  saveStops: (stops) =>
-    request('/api/admin/stops', { method: 'PUT', token: getAdminToken(), body: { stops } }),
-  getDepartures: () => request('/api/admin/departures', { token: getAdminToken() }),
-  addDeparture: (time) =>
-    request('/api/admin/departures', { method: 'POST', token: getAdminToken(), body: { time } }),
-  removeDeparture: (time) =>
-    request('/api/admin/departures', { method: 'DELETE', token: getAdminToken(), body: { time } }),
-  getDrivers: () => request('/api/admin/drivers', { token: getAdminToken() }),
-  addDriver: (driverName, label, pin) =>
-    request('/api/admin/drivers', {
+  getRoutes: () => request('/api/admin/routes', { token: getAdminToken() }),
+  addRoute: (name) =>
+    request('/api/admin/routes', { method: 'POST', token: getAdminToken(), body: { name } }),
+  removeRoute: (id) =>
+    request('/api/admin/routes', { method: 'DELETE', token: getAdminToken(), body: { id } }),
+  getStops: (routeId) => request(qs('/api/admin/stops', routeId), { token: getAdminToken() }),
+  saveStops: (stops, routeId) =>
+    request(qs('/api/admin/stops', routeId), { method: 'PUT', token: getAdminToken(), body: { stops } }),
+  getDepartures: (routeId) => request(qs('/api/admin/departures', routeId), { token: getAdminToken() }),
+  addDeparture: (time, routeId) =>
+    request(qs('/api/admin/departures', routeId), { method: 'POST', token: getAdminToken(), body: { time } }),
+  removeDeparture: (time, routeId) =>
+    request(qs('/api/admin/departures', routeId), { method: 'DELETE', token: getAdminToken(), body: { time } }),
+  getDrivers: (routeId) => request(qs('/api/admin/drivers', routeId), { token: getAdminToken() }),
+  addDriver: (driverName, label, pin, routeId) =>
+    request(qs('/api/admin/drivers', routeId), {
       method: 'POST',
       token: getAdminToken(),
       body: { driverName, label, pin },
     }),
-  removeDriver: (id) =>
-    request('/api/admin/drivers', { method: 'DELETE', token: getAdminToken(), body: { id } }),
-  getMessage: () => request('/api/admin/message', { token: getAdminToken() }),
-  setMessage: (message) =>
-    request('/api/admin/message', { method: 'PUT', token: getAdminToken(), body: { message } }),
-  getTrips: () => request('/api/admin/trips', { token: getAdminToken() }),
+  removeDriver: (id, routeId) =>
+    request(qs('/api/admin/drivers', routeId), { method: 'DELETE', token: getAdminToken(), body: { id } }),
+  getMessage: (routeId) => request(qs('/api/admin/message', routeId), { token: getAdminToken() }),
+  setMessage: (message, routeId) =>
+    request(qs('/api/admin/message', routeId), { method: 'PUT', token: getAdminToken(), body: { message } }),
+  getTrips: (routeId) => request(qs('/api/admin/trips', routeId), { token: getAdminToken() }),
 };
+
+function qs(path, routeId) {
+  return routeId ? `${path}?route=${encodeURIComponent(routeId)}` : path;
+}

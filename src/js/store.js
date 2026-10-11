@@ -18,11 +18,21 @@ function loadStoredNotify() {
   }
 }
 
+function loadStoredRouteId() {
+  try {
+    return localStorage.getItem('sunushuttle:routeId');
+  } catch {
+    return null;
+  }
+}
+
 export function createStore() {
   const state = {
     view: 'home',
     lang: detectLanguage(),
     data: null, // last /api/state payload
+    routes: [], // all routes for the picker
+    selectedRouteId: loadStoredRouteId(),
     loadError: false,
     offline: false,
     selectedStopIndex: loadStoredStopIndex(),
