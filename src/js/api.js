@@ -93,6 +93,7 @@ export function setAdminToken(token) {
 
 export const api = {
   state: (routeId) => request(routeId ? `/api/state?route=${routeId}` : '/api/state'),
+  live: (routeId) => request(routeId ? `/api/live?route=${routeId}` : '/api/live'),
   routes: () => request('/api/routes'),
 
   driverLogin: (pin) => request('/api/driver/login', { method: 'POST', body: { pin } }),

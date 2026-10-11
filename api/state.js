@@ -27,7 +27,7 @@ export default withErrors(async (req, res) => {
     `,
   ]);
 
-  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
   res.status(200).json({
     route: { id: route.id, name: route.name },
     stops: stops.map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng })),
