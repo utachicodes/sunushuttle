@@ -60,6 +60,8 @@ function activeBus(data) {
   return data?.buses?.[0] ?? null;
 }
 
+const ISSUE_KEYS = { traffic: 'issueTraffic', late: 'issueLate', breakdown: 'issueBreakdown' };
+
 export function render(root, { store, t, lang }) {
   const { state, setState } = store;
   const data = state.data;
@@ -98,9 +100,14 @@ export function render(root, { store, t, lang }) {
   }
 
   const announcementEl = document.getElementById('announcement');
+  const alertBus = data?.buses?.[0] ?? null;
+  const busAlert = alertBus?.alert ? ISSUE_KEYS[alertBus.alert] : null;
   if (state.offline) {
     announcementEl.hidden = false;
     announcementEl.textContent = t('offline');
+  } else if (busAlert && alertBus) {
+    announcementEl.hidden = false;
+    announcementEl.textContent = `${alertBus.label} · ${t(busAlert)}`;
   } else if (data?.message) {
     announcementEl.hidden = false;
     announcementEl.textContent = data.message;
