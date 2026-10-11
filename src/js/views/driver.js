@@ -48,6 +48,11 @@ function skeletonLive(t) {
           <div><span class="mute">${t('boarded')}</span><b id="boardedCount">0</b></div>
         </div>
       </div>
+      <div class="issue-row" id="issueRow" role="group">
+        <button class="issue-chip" data-issue="traffic">${t('issueTraffic')}</button>
+        <button class="issue-chip" data-issue="late">${t('issueLate')}</button>
+        <button class="issue-chip" data-issue="breakdown">${t('issueBreakdown')}</button>
+      </div>
       <div class="map-shell">
         <div id="driverMap"></div>
         <button class="map-recenter" id="driverRecenterBtn" aria-label="Recenter map">⌖</button>
@@ -135,6 +140,24 @@ export function render(root, { store, t, go }) {
       if (map && stops.length) fitToStops(map, stops);
     };
   }
+
+  root.querySelectorAll('#issueRow [data-issue]').forEach((btn) => {
+    btn.classList.toggle('sel', d.alert === btn.dataset.issue);
+    btn.onclick = () => reportIssue(store, btn.dataset.issue);
+  });
+}
+
+async function reportIssue(store, issue) {
+  const { setDriver } = store;
+  const prev = store.state.driver.alert;
+  const next = prev === issue ? null : issue;
+  setDriver({ alert: next });
+  try {
+    await api.alert(next ?? 'clear');
+  } catch {
+    setDriver({ alert: prev });
+    showToast('Could not send update');
+  }
 }
 
 export function renderBar(bar, { store, t }) {
@@ -173,7 +196,7 @@ async function startTrip(store) {
     showToast('Could not start the trip');
     return;
   }
-  setDriver({ live: true, boarded: 0, armEndTrip: false });
+  setDriver({ live: true, boarded: 0, armEndTrip: false, alert: null });
   beginTracking(store);
 }
 
@@ -183,7 +206,7 @@ async function endTrip(store) {
   try {
     await api.tripEnd();
   } catch { /* best effort, UI already reflects the end */ }
-  setDriver({ live: false, armEndTrip: false, lastPosition: null, speedKmh: 0 });
+  setDriver({ live: false, armEndTrip: false, lastPosition: null, speedKmh: 0, alert: null });
 }
 
 function beginTracking(store) {

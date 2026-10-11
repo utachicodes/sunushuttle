@@ -45,6 +45,7 @@ export function createStore() {
       pinError: false,
       live: false,
       tripId: null,
+      alert: null,
       speedKmh: 0,
       boarded: 0,
       lastPosition: null,

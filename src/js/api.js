@@ -99,6 +99,8 @@ export const api = {
   driverLogin: (pin) => request('/api/driver/login', { method: 'POST', body: { pin } }),
   tripStart: () => request('/api/driver/trip-start', { method: 'POST', token: getDriverToken() }),
   tripEnd: () => request('/api/driver/trip-end', { method: 'POST', token: getDriverToken() }),
+  alert: (issue) =>
+    request('/api/driver/alert', { method: 'POST', token: getDriverToken(), body: { issue } }),
   sendPosition: (lat, lng, speedKmh, heading) =>
     request('/api/driver/position', {
       method: 'POST',
