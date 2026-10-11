@@ -141,6 +141,15 @@ const server = http.createServer(async (req, res) => {
     return send(res, 200, { routes: state.routes });
   }
 
+  if (req.method === 'GET' && path === '/api/live') {
+    return send(res, 200, {
+      buses: state.buses
+        .filter((b) => b.routeId === routeId)
+        .map((b) => ({ ...busPosition(b), id: b.id, label: b.label, speedKmh: b.speedKmh, heading: null, boarded: b.boarded, updatedAt: new Date().toISOString() })),
+      at: new Date().toISOString(),
+    });
+  }
+
   // Public state — the student view polls this.
   if (req.method === 'GET' && path === '/api/state') {
     const route = state.routes.find((r) => r.id === routeId);
