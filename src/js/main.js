@@ -123,7 +123,9 @@ async function loadRoutes() {
     const ids = new Set((routes ?? []).map((r) => r.id));
     if (!ids.has(store.state.selectedRouteId)) {
       patch.selectedRouteId = routes?.[0]?.id ?? null;
-      patch.selectedStopIndex = 0;
+      // Only reset the stop when a previously chosen route disappeared,
+      // not on first boot (that would wipe a saved stop).
+      if (store.state.selectedRouteId) patch.selectedStopIndex = 0;
       try {
         if (patch.selectedRouteId) localStorage.setItem('sunushuttle:routeId', patch.selectedRouteId);
       } catch { /* ignore */ }
