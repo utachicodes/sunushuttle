@@ -56,6 +56,32 @@ try {
     [route.id, 'Bus 1', 'Demo Driver', pinHash]
   );
 
+  // A second demo route so multi-route behavior works out of the box.
+  const { rows: [route2] } = await pool.query(
+    `insert into routes (name) values ($1) returning id`,
+    ['Airport Express']
+  );
+  const STOPS2 = [
+    ['Campus Gate', 14.6937, -17.4441],
+    ['Stadium', 14.6862, -17.4553],
+    ['Airport', 14.6772, -17.4909],
+  ];
+  for (let i = 0; i < STOPS2.length; i++) {
+    await pool.query(
+      `insert into stops (route_id, position, name, lat, lng) values ($1, $2, $3, $4, $5)`,
+      [route2.id, i, ...STOPS2[i]]
+    );
+  }
+  for (const time of ['08:00', '13:00', '19:00']) {
+    await pool.query(`insert into departures (route_id, departs_at) values ($1, $2)`, [route2.id, time]);
+  }
+  await pool.query(`insert into announcements (route_id, message) values ($1, '')`, [route2.id]);
+  const pinHash2 = await bcrypt.hash('5678', 10);
+  await pool.query(
+    `insert into buses (route_id, label, driver_name, pin_hash) values ($1, $2, $3, $4)`,
+    [route2.id, 'Navette A', 'Moussa Sy', pinHash2]
+  );
+
   const adminPassword = randomPassword();
   const passwordHash = await bcrypt.hash(adminPassword, 10);
   await pool.query(
@@ -65,7 +91,8 @@ try {
 
   console.log('Seed complete.');
   console.log(`Route: SunuShuttle Main Line (${STOPS.length} stops, demo coordinates)`);
-  console.log(`Demo driver PIN: ${DEMO_DRIVER_PIN}`);
+  console.log(`Route: Airport Express (${STOPS2.length} stops, demo coordinates)`);
+  console.log(`Demo driver PINs: ${DEMO_DRIVER_PIN} (Main Line), 5678 (Airport Express)`);
   console.log(`Admin username: admin`);
   console.log(`Admin password: ${adminPassword}`);
   console.log('Store the admin password now, it will not be shown again. Update stop coordinates for your real route from the admin panel.');

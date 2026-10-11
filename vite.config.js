@@ -3,7 +3,11 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // Local full-stack dev runs through `vercel dev`, which serves this Vite
 // app and the /api functions together, so no dev proxy is configured here.
+// The exception is MOCK_API=1 (`npm run dev:mock`), which proxies /api to
+// the frontend-only stub in scripts/mock-api.js.
+const useMockApi = process.env.MOCK_API === '1';
 export default defineConfig({
+  server: useMockApi ? { proxy: { '/api': 'http://localhost:5174' } } : {},
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -27,10 +31,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/,
+            urlPattern: /^https:\/\/(.*\.)?(tile\.openstreetmap\.org|basemaps\.cartocdn\.com)\/.*/,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'osm-tiles',
+              cacheName: 'map-tiles',
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 14 },
             },
           },

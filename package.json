@@ -9,6 +9,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:mock": "MOCK_API=1 vite",
+    "mock:api": "node scripts/mock-api.js",
     "build": "vite build",
     "preview": "vite preview",
     "icons": "node scripts/generate-icons.js",
@@ -16,6 +18,8 @@
     "db:seed": "node scripts/seed.js"
   },
   "dependencies": {
+    "@neon/config": "^1.8.6",
+    "@neon/env": "^1.5.3",
     "@neondatabase/serverless": "^0.10.4",
     "bcryptjs": "^2.4.3",
     "leaflet": "^1.9.4"
