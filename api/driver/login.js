@@ -41,6 +41,6 @@ export default withErrors(async (req, res) => {
   );
   send(res, 200, {
     token,
-    bus: { id: match.id, label: match.label, driverName: match.driver_name },
+    bus: { id: match.id, label: match.label, driverName: match.driver_name, routeId: match.route_id },
   });
 });
