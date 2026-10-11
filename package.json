@@ -1,0 +1,32 @@
+{
+  "name": "sunushuttle",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Live shuttle tracking PWA for university bus routes",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "icons": "node scripts/generate-icons.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "bcryptjs": "^2.4.3",
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "dotenv": "^18.0.7",
+    "sharp": "^0.35.5",
+    "vite": "^5.4.11",
+    "vite-plugin-pwa": "^0.20.5"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
+  }
+}
