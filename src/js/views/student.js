@@ -11,6 +11,8 @@ let busMarkers = new Map();
 let drawnStopsKey = '';
 let fitted = false;
 let fittedRoute = null;
+let speedHistory = [];
+let speedBusKey = null;
 
 function persistStopIndex(i) {
   try { localStorage.setItem('sunushuttle:stopIndex', String(i)); } catch { /* ignore */ }
@@ -134,7 +136,7 @@ export function render(root, { store, t, lang }) {
     if (!marker) {
       busMarkers.set(b.id, createBusMarker(busLayer, [b.lat, b.lng], b.label));
     } else {
-      marker._moveTo([b.lat, b.lng], 2800);
+      marker._moveTo([b.lat, b.lng], 2400);
     }
   }
 
@@ -148,7 +150,17 @@ export function render(root, { store, t, lang }) {
   const stop = stops[state.selectedStopIndex];
 
   if (bus && stop) {
-    const minutes = etaMinutes({ lat: bus.lat, lng: bus.lng }, stops, state.selectedStopIndex, bus.speedKmh);
+    // Smooth the speed over recent fixes: phone GPS speed jumps around and
+    // would make the ETA flicker minute to minute.
+    const busKey = `${data?.route?.id ?? ''}:${bus.id}`;
+    if (busKey !== speedBusKey) {
+      speedBusKey = busKey;
+      speedHistory = [];
+    }
+    speedHistory.push(Math.max(0, bus.speedKmh || 0));
+    if (speedHistory.length > 5) speedHistory.shift();
+    const smoothSpeed = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+    const minutes = etaMinutes({ lat: bus.lat, lng: bus.lng }, stops, state.selectedStopIndex, smoothSpeed);
     if (minutes === null) {
       etaEl.textContent = t('passedStop');
       subEl.textContent = '';
@@ -282,4 +294,6 @@ export function destroy() {
   drawnStopsKey = '';
   fitted = false;
   fittedRoute = null;
+  speedHistory = [];
+  speedBusKey = null;
 }

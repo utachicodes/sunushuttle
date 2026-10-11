@@ -15,6 +15,7 @@ let wakeLock = null;
 let lastFix = null; // { lat, lng, t }
 let sendTimer = null;
 let pendingFix = null;
+let lastSent = null; // last uploaded fix, for the movement gate
 
 function skeletonIdle(t, bus) {
   return `
@@ -206,11 +207,21 @@ function beginTracking(store) {
     navigator.wakeLock?.request('screen').then((lock) => (wakeLock = lock));
   } catch { /* wake lock unsupported */ }
 
+  // Upload every 3s while moving; when standing still only a 12s
+  // heartbeat goes out. Cuts write load and phone battery use.
   sendTimer = setInterval(() => {
     if (!pendingFix) return;
     const fix = pendingFix;
+    if (
+      lastSent &&
+      haversineMeters(lastSent, fix) < 10 &&
+      Date.now() - lastSent.t < 12000
+    ) {
+      return;
+    }
+    lastSent = { ...fix, t: Date.now() };
     api.sendPosition(fix.lat, fix.lng, fix.speedKmh, fix.heading).catch(() => {});
-  }, 4000);
+  }, 3000);
 }
 
 function estimateSpeed(fix) {
@@ -236,6 +247,7 @@ function stopTracking() {
   }
   lastFix = null;
   pendingFix = null;
+  lastSent = null;
 }
 
 export function destroy() {
