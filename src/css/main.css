@@ -645,6 +645,47 @@ img { max-width: 100%; }
 .admin-row > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stop-edit-row .field { min-width: 0; }
 .driver-kv b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.issue-row { display: flex; gap: 8px; margin-top: 12px; flex: none; }
+.issue-chip {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-weight: 700;
+  font-size: 12px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+.issue-chip:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.issue-chip.sel { background: var(--orange); color: #fff; }
+
+/* Install nudge */
+#installNudge {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(var(--bar-h) + 12px);
+  width: calc(100% - 32px);
+  max-width: 448px;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  box-shadow: var(--press);
+  padding: 12px 14px;
+  animation: rise 0.3s ease both;
+}
+#installNudge .nudge-text { flex: 1; min-width: 0; }
+#installNudge .nudge-text b { display: block; font-size: 14px; }
+#installNudge .nudge-text span { font-size: 12px; color: var(--mute); font-weight: 500; }
+#installNudge .chip-btn { min-height: 44px; }
+#installNudge .nudge-x { flex: none; font-size: 18px; font-weight: 700; color: var(--mute); min-width: 44px; min-height: 44px; border-radius: 10px; }
+#installNudge .nudge-x:active { color: var(--ink); }
 
 @keyframes dot-pulse {
   0%, 100% { opacity: 1; }

@@ -95,6 +95,75 @@ const actionBar = document.getElementById('actionBar');
 const backBtn = document.getElementById('backBtn');
 const langBtn = document.getElementById('langBtn');
 
+// Homescreen install nudge (dismissible, remembered).
+let deferredPrompt = null;
+let nudgeKey = '';
+const nudge = document.createElement('div');
+nudge.id = 'installNudge';
+nudge.hidden = true;
+app.appendChild(nudge);
+
+function isStandalone() {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true
+  );
+}
+
+function nudgeDismissed() {
+  try {
+    return localStorage.getItem('sunushuttle:installHide') === '1';
+  } catch {
+    return true;
+  }
+}
+
+function paintNudge() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+  const showable = !isStandalone() && !nudgeDismissed() && (deferredPrompt || ios);
+  const key = `${showable}:${store.state.lang}:${ios}`;
+  if (key === nudgeKey) return;
+  nudgeKey = key;
+  if (!showable) {
+    nudge.hidden = true;
+    nudge.innerHTML = '';
+    return;
+  }
+  nudge.hidden = false;
+  nudge.innerHTML = `
+    <div class="nudge-text"><b>${t('installTitle')}</b><span>${ios && !deferredPrompt ? t('installIOS') : t('installDesc')}</span></div>
+    ${deferredPrompt ? `<button class="chip-btn" id="installGoBtn">${t('installBtn')}</button>` : ''}
+    <button class="nudge-x" id="installHideBtn" aria-label="${t('installLater')}">✕</button>
+  `;
+  document.getElementById('installHideBtn').addEventListener('click', () => {
+    try {
+      localStorage.setItem('sunushuttle:installHide', '1');
+    } catch { /* ignore */ }
+    nudgeKey = '';
+    paintNudge();
+  });
+  const goBtn = document.getElementById('installGoBtn');
+  if (goBtn) {
+    goBtn.addEventListener('click', async () => {
+      try {
+        await deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+      } catch { /* ignore */ }
+      deferredPrompt = null;
+      try {
+        localStorage.setItem('sunushuttle:installHide', '1');
+      } catch { /* ignore */ }
+      nudgeKey = '';
+      paintNudge();
+    });
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  paintNudge();
+});
+
 function t(key, vars) {
   return translate(store.state.lang, key, vars);
 }
@@ -144,6 +213,7 @@ function render() {
   if (mod.renderBar) mod.renderBar(actionBar, ctx);
   else actionBar.innerHTML = '';
 
+  paintNudge();
   managePolling(state);
 }
 
