@@ -36,6 +36,13 @@ create table if not exists buses (
   created_at timestamptz not null default now()
 );
 
+-- Name of the fonek (github.com/lodjim/fonek) device tracking this bus's BLE
+-- tag over Apple's Find My network, if one is mounted. Used as a fallback
+-- position when the driver's phone isn't streaming GPS. Added via `alter`
+-- rather than the `buses` definition above so re-running this file adds the
+-- column to databases that already have the table.
+alter table buses add column if not exists fonek_device_name text;
+
 create table if not exists trips (
   id uuid primary key default gen_random_uuid(),
   bus_id uuid not null references buses(id) on delete cascade,
