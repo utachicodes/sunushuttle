@@ -370,6 +370,9 @@ main {
   border: 2px solid var(--orange);
   animation: seal-ring 2s ease-out infinite;
 }
+/* Fallback position (fonek BLE tag, not live phone GPS): muted, no pulse. */
+.map-bus.muted::before { background: var(--mute, #9aa0a6); opacity: 0.8; }
+.map-bus.muted .map-bus-ring { border-color: var(--mute, #9aa0a6); animation: none; opacity: 0.5; }
 
 .stop-picker {
   display: flex;

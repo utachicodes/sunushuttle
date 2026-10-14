@@ -28,10 +28,10 @@ function stopIcon(isSelected, n) {
   });
 }
 
-function busIcon() {
+function busIcon(muted) {
   return L.divIcon({
     className: '',
-    html: '<span class="map-bus"><span class="map-bus-ring"></span></span>',
+    html: `<span class="map-bus${muted ? ' muted' : ''}"><span class="map-bus-ring"></span></span>`,
     iconSize: [40, 40],
     iconAnchor: [20, 20],
   });
@@ -63,9 +63,10 @@ export function fitToStops(map, stops) {
   map.fitBounds(bounds, { padding: [40, 40] });
 }
 
-/** A bus marker that animates between GPS fixes instead of jumping. */
-export function createBusMarker(layerGroup, latlng, label) {
-  const marker = L.marker(latlng, { icon: busIcon(), zIndexOffset: 1000 });
+/** A bus marker that animates between GPS fixes instead of jumping.
+ * `muted` renders it as a stale/fallback position rather than a live one. */
+export function createBusMarker(layerGroup, latlng, label, { muted = false } = {}) {
+  const marker = L.marker(latlng, { icon: busIcon(muted), zIndexOffset: muted ? 500 : 1000 });
   if (label) marker.bindTooltip(label, { direction: 'top', offset: [0, -16], permanent: false });
   marker.addTo(layerGroup);
 
