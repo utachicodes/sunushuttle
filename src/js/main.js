@@ -54,6 +54,9 @@ async function tick() {
   } else {
     await fetchLive();
   }
+  // No bus is actually driving right now: check the slow fonek fallback
+  // feed too, at the same idle cadence (it's a no-op if no bus has a tag).
+  if (!routeIsLive() && store.state.view === 'student') await fetchFallback();
   schedulePoll(routeIsLive() ? POLL_LIVE_MS : POLL_IDLE_MS);
 }
 
@@ -223,6 +226,15 @@ async function fetchLive() {
     store.setState({ data: { ...(store.state.data ?? {}), buses: buses ?? [] }, loadError: false });
   } catch {
     store.setState({ loadError: true });
+  }
+}
+
+async function fetchFallback() {
+  try {
+    const { buses } = await api.fallback(routeIdForView(store.state));
+    store.setState({ data: { ...(store.state.data ?? {}), fallbackBuses: buses ?? [] } });
+  } catch {
+    /* fallback is best-effort; leave whatever we last had */
   }
 }
 
