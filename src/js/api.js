@@ -94,6 +94,7 @@ export function setAdminToken(token) {
 export const api = {
   state: (routeId) => request(routeId ? `/api/state?route=${routeId}` : '/api/state'),
   live: (routeId) => request(routeId ? `/api/live?route=${routeId}` : '/api/live'),
+  fallback: (routeId) => request(routeId ? `/api/fallback?route=${routeId}` : '/api/fallback'),
   routes: () => request('/api/routes'),
 
   driverLogin: (pin) => request('/api/driver/login', { method: 'POST', body: { pin } }),
@@ -125,11 +126,17 @@ export const api = {
   removeDeparture: (time, routeId) =>
     request(qs('/api/admin/departures', routeId), { method: 'DELETE', token: getAdminToken(), body: { time } }),
   getDrivers: (routeId) => request(qs('/api/admin/drivers', routeId), { token: getAdminToken() }),
-  addDriver: (driverName, label, pin, routeId) =>
+  addDriver: (driverName, label, pin, fonekDeviceName, routeId) =>
     request(qs('/api/admin/drivers', routeId), {
       method: 'POST',
       token: getAdminToken(),
-      body: { driverName, label, pin },
+      body: { driverName, label, pin, fonekDeviceName },
+    }),
+  setDriverFonek: (id, fonekDeviceName, routeId) =>
+    request(qs('/api/admin/drivers', routeId), {
+      method: 'PATCH',
+      token: getAdminToken(),
+      body: { id, fonekDeviceName },
     }),
   removeDriver: (id, routeId) =>
     request(qs('/api/admin/drivers', routeId), { method: 'DELETE', token: getAdminToken(), body: { id } }),
