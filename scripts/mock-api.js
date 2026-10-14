@@ -48,10 +48,17 @@ const state = {
     { id: 'bus-2', routeId: 'r1', label: 'Bus 2', seg: 2, frac: 0.5, boarded: 7, speedKmh: BUS_SPEED_KMH, driven: false },
     { id: 'bus-3', routeId: 'r2', label: 'Navette A', seg: 0, frac: 0.3, boarded: 11, speedKmh: 30, driven: false },
   ],
+  // A bus with a fonek tag but no driver currently signed in: /api/fallback
+  // shows it with a "last seen" marker instead of a live one, demoing the
+  // backup locator (github.com/lodjim/fonek) without a real fonek backend.
+  fallbackBuses: {
+    r2: [{ id: 'bus-4', label: 'Navette B', lat: 14.6895, lng: -17.4701, accuracy: 20, updatedAt: new Date(Date.now() - 22 * 60000).toISOString() }],
+  },
   drivers: [
-    { id: 'd1', routeId: 'r1', label: 'Bus 1', driverName: 'Demo Driver' },
-    { id: 'd2', routeId: 'r1', label: 'Bus 2', driverName: 'Awa Diallo' },
-    { id: 'd3', routeId: 'r2', label: 'Navette A', driverName: 'Moussa Sy' },
+    { id: 'd1', routeId: 'r1', label: 'Bus 1', driverName: 'Demo Driver', fonekDeviceName: null },
+    { id: 'd2', routeId: 'r1', label: 'Bus 2', driverName: 'Awa Diallo', fonekDeviceName: null },
+    { id: 'd3', routeId: 'r2', label: 'Navette A', driverName: 'Moussa Sy', fonekDeviceName: null },
+    { id: 'd4', routeId: 'r2', label: 'Navette B', driverName: 'Fatou Ndiaye', fonekDeviceName: 'Navette B tag' },
   ],
   trips: [
     { id: 't3', routeId: 'r1', driverName: 'Awa Diallo', label: 'Bus 2', startedAt: new Date(Date.now() - 90 * 60000).toISOString(), endedAt: new Date(Date.now() - 55 * 60000).toISOString(), boarded: 21 },
@@ -139,6 +146,10 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === 'GET' && path === '/api/routes') {
     return send(res, 200, { routes: state.routes });
+  }
+
+  if (req.method === 'GET' && path === '/api/fallback') {
+    return send(res, 200, { buses: state.fallbackBuses[routeId] ?? [], at: new Date().toISOString() });
   }
 
   if (req.method === 'GET' && path === '/api/live') {
@@ -265,8 +276,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET') return send(res, 200, { drivers: state.drivers.filter((d) => d.routeId === routeId) });
     const body = await readBody(req);
     if (req.method === 'POST') {
-      const driver = { id: `d${Date.now()}`, routeId, driverName: body.driverName, label: body.label };
+      const driver = { id: `d${Date.now()}`, routeId, driverName: body.driverName, label: body.label, fonekDeviceName: body.fonekDeviceName || null };
       state.drivers.push(driver);
+      return send(res, 200, { driver });
+    }
+    if (req.method === 'PATCH') {
+      const driver = state.drivers.find((d) => d.id === body.id && d.routeId === routeId);
+      if (!driver) return send(res, 400, { error: 'Driver not found' });
+      driver.fonekDeviceName = body.fonekDeviceName || null;
       return send(res, 200, { driver });
     }
     if (req.method === 'DELETE') {
