@@ -8,6 +8,7 @@ let map = null;
 let routeLayer = null;
 let busLayer = null;
 let busMarkers = new Map();
+let fallbackMarkers = new Map();
 let drawnStopsKey = '';
 let fitted = false;
 let fittedRoute = null;
@@ -76,6 +77,7 @@ export function render(root, { store, t, lang }) {
     fitted = false;
     fittedRoute = null;
     busMarkers = new Map();
+    fallbackMarkers = new Map();
   }
 
   const routes = state.routes ?? [];
@@ -144,6 +146,27 @@ export function render(root, { store, t, lang }) {
       busMarkers.set(b.id, createBusMarker(busLayer, [b.lat, b.lng], b.label));
     } else {
       marker._moveTo([b.lat, b.lng], 2400);
+    }
+  }
+
+  // fonek backup positions: shown only for buses that aren't live right now,
+  // greyed out with a "last seen" label instead of a pulsing live marker.
+  const fallbackBuses = (data?.fallbackBuses ?? []).filter((b) => !liveIds.has(b.id));
+  const fallbackIds = new Set(fallbackBuses.map((b) => b.id));
+  for (const [id, marker] of fallbackMarkers) {
+    if (!fallbackIds.has(id)) {
+      busLayer.removeLayer(marker);
+      fallbackMarkers.delete(id);
+    }
+  }
+  for (const b of fallbackBuses) {
+    const tooltip = `${b.label} · ${formatElapsed(b.updatedAt, t)}`;
+    const marker = fallbackMarkers.get(b.id);
+    if (!marker) {
+      fallbackMarkers.set(b.id, createBusMarker(busLayer, [b.lat, b.lng], tooltip, { muted: true }));
+    } else {
+      marker.setLatLng([b.lat, b.lng]);
+      marker.setTooltipContent(tooltip);
     }
   }
 
@@ -286,6 +309,14 @@ export function renderBar(bar, { store, t }) {
   });
 }
 
+function formatElapsed(iso, t) {
+  const ms = Date.now() - new Date(iso).getTime();
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 1) return t('fallbackJustNow');
+  if (minutes < 60) return t('fallbackMinAgo', { n: minutes });
+  return t('fallbackHourAgo', { n: Math.round(minutes / 60) });
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
@@ -298,6 +329,7 @@ export function destroy() {
   routeLayer = null;
   busLayer = null;
   busMarkers = new Map();
+  fallbackMarkers = new Map();
   drawnStopsKey = '';
   fitted = false;
   fittedRoute = null;
