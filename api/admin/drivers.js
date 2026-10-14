@@ -13,7 +13,7 @@ export default withErrors(async (req, res) => {
 
   if (req.method === 'GET') {
     const drivers = await sql`
-      select id, label, driver_name as "driverName" from buses
+      select id, label, driver_name as "driverName", fonek_device_name as "fonekDeviceName" from buses
       where route_id = ${routeId} order by label asc
     `;
     return send(res, 200, { drivers });
@@ -23,6 +23,7 @@ export default withErrors(async (req, res) => {
     const name = String(req.body?.driverName ?? '').trim();
     const label = String(req.body?.label ?? '').trim();
     const pin = String(req.body?.pin ?? '');
+    const fonekDeviceName = String(req.body?.fonekDeviceName ?? '').trim() || null;
     if (!name || !label) return badRequest(res, 'Name and bus label required');
     if (!/^\d{4}$/.test(pin)) return badRequest(res, 'PIN must be 4 digits');
 
@@ -33,10 +34,23 @@ export default withErrors(async (req, res) => {
 
     const pinHash = await bcrypt.hash(pin, 10);
     const [bus] = await sql`
-      insert into buses (route_id, label, driver_name, pin_hash)
-      values (${routeId}, ${label}, ${name}, ${pinHash})
-      returning id, label, driver_name as "driverName"
+      insert into buses (route_id, label, driver_name, pin_hash, fonek_device_name)
+      values (${routeId}, ${label}, ${name}, ${pinHash}, ${fonekDeviceName})
+      returning id, label, driver_name as "driverName", fonek_device_name as "fonekDeviceName"
     `;
+    return send(res, 200, { driver: bus });
+  }
+
+  if (req.method === 'PATCH') {
+    const id = String(req.body?.id ?? '');
+    if (!id) return badRequest(res, 'id required');
+    const fonekDeviceName = String(req.body?.fonekDeviceName ?? '').trim() || null;
+    const [bus] = await sql`
+      update buses set fonek_device_name = ${fonekDeviceName}
+      where id = ${id} and route_id = ${routeId}
+      returning id, label, driver_name as "driverName", fonek_device_name as "fonekDeviceName"
+    `;
+    if (!bus) return badRequest(res, 'Driver not found');
     return send(res, 200, { driver: bus });
   }
 
@@ -47,5 +61,5 @@ export default withErrors(async (req, res) => {
     return send(res, 200, { ok: true });
   }
 
-  methodNotAllowed(res, ['GET', 'POST', 'DELETE']);
+  methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE']);
 });
