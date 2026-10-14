@@ -24,6 +24,25 @@ Each route supports more than one bus running at the same time. Each bus shows u
 
 Route progress and ETA are computed by projecting the bus's GPS position onto the route polyline (`src/js/geo.js`), not by trusting the device's raw speed reading, since that is frequently null or noisy on phones. GPS jumps implying >160 km/h are rejected server-side, and the client smooths speed over recent fixes before computing the ETA.
 
+```mermaid
+flowchart LR
+  DRIVER["Driver phone<br>GPS + PIN login"] -- "POST /api/driver/position<br>every 3s" --> API
+  STUDENT["Student PWA<br>map + ETA"] -- "GET /api/live (2.5s)<br>GET /api/state (30s)" --> API
+  ADMIN["Admin panel<br>routes, stops, drivers"] -- "GET/POST /api/admin/*" --> API
+  API["Vercel serverless<br>functions (api/)"] --> DB[(Neon Postgres)]
+
+  TAG["fonek BLE tag<br>on the bus"] -- "BLE advertisement" --> IPHONE[Nearby iPhones]
+  IPHONE -- "encrypted location report" --> APPLE[(Apple Find My)]
+  APPLE -- "reports for its key" --> FONEK["fonek backend<br>(self-hosted, optional)"]
+  API -- "GET /api/public/locations<br>(idle polling only)" --> FONEK
+
+  STUDENT -. "backup marker when<br>no live GPS" .-> API
+```
+
+Live tracking (top) is the primary path: driver phone → API → student map, polled every
+2.5s. The fonek path (bottom) only kicks in as a backup when a bus has no live position —
+see below.
+
 ### Backup locator (fonek)
 
 Live tracking depends on the driver's phone streaming GPS; if that phone is off, out of
