@@ -61,7 +61,12 @@ function sectionHtml(t) {
 
   const driverRows = cache.drivers
     .map(
-      (d) => `<div class="admin-row"><span>${escapeHtml(d.driverName)}, ${escapeHtml(d.label)}</span><button class="chip-btn" data-remove-driver="${d.id}" aria-label="Remove ${escapeHtml(d.driverName)}">✕</button></div>`
+      (d) => `
+      <div class="admin-row">
+        <span>${escapeHtml(d.driverName)}, ${escapeHtml(d.label)}${d.fonekDeviceName ? ` <span class="mute">· fonek: ${escapeHtml(d.fonekDeviceName)}</span>` : ''}</span>
+        <button class="chip-btn" data-edit-fonek="${d.id}" data-fonek-value="${escapeHtml(d.fonekDeviceName ?? '')}" aria-label="${t('fonekTag')}">⚑</button>
+        <button class="chip-btn" data-remove-driver="${d.id}" aria-label="Remove ${escapeHtml(d.driverName)}">✕</button>
+      </div>`
     )
     .join('');
 
@@ -133,8 +138,10 @@ function sectionHtml(t) {
         </div>
         <div class="admin-row">
           <input class="field" id="newDriverPin" placeholder="${t('pin')}" inputmode="numeric" maxlength="4" />
+          <input class="field" id="newDriverFonek" placeholder="${t('fonekTag')}" />
           <button class="chip-btn" id="addDriverBtn">${t('add')}</button>
         </div>
+        <div class="mute" style="margin-top:4px">${t('fonekTagHelp')}</div>
       </div>
 
       <div class="admin-section" id="sec-trips">
@@ -274,8 +281,9 @@ function wireEvents(root, t, go) {
     const driverName = root.querySelector('#newDriverName').value.trim();
     const label = root.querySelector('#newDriverLabel').value.trim();
     const pin = root.querySelector('#newDriverPin').value.trim();
+    const fonekDeviceName = root.querySelector('#newDriverFonek').value.trim();
     try {
-      await api.addDriver(driverName, label, pin, adminRouteId);
+      await api.addDriver(driverName, label, pin, fonekDeviceName, adminRouteId);
       await refresh();
     } catch (err) {
       showToast(err.message === 'PIN already in use' ? err.message : 'PIN must be 4 digits, name and bus label required');
@@ -286,6 +294,20 @@ function wireEvents(root, t, go) {
     btn.addEventListener('click', async () => {
       await api.removeDriver(btn.dataset.removeDriver, adminRouteId);
       await refresh();
+    });
+  });
+
+  root.querySelectorAll('[data-edit-fonek]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const current = btn.dataset.fonekValue ?? '';
+      const next = window.prompt(t('fonekTagPrompt'), current);
+      if (next === null) return;
+      try {
+        await api.setDriverFonek(btn.dataset.editFonek, next.trim(), adminRouteId);
+        await refresh();
+      } catch {
+        showToast('Could not save fonek device');
+      }
     });
   });
 
