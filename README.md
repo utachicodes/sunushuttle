@@ -24,6 +24,32 @@ Each route supports more than one bus running at the same time. Each bus shows u
 
 Route progress and ETA are computed by projecting the bus's GPS position onto the route polyline (`src/js/geo.js`), not by trusting the device's raw speed reading, since that is frequently null or noisy on phones. GPS jumps implying >160 km/h are rejected server-side, and the client smooths speed over recent fixes before computing the ETA.
 
+### Backup locator (fonek)
+
+Live tracking depends on the driver's phone streaming GPS; if that phone is off, out of
+battery, or the app isn't running, the bus simply has no live marker. As an optional
+backup, a bus can carry a cheap ESP32 BLE tag running
+[**fonek**](https://github.com/lodjim/fonek) by [lodjim](https://github.com/lodjim) — an
+open-source tracker that rides Apple's Find My network: the tag broadcasts a public key
+over Bluetooth, any nearby iPhone encrypts and uploads its location to Apple, and a
+self-hosted fonek backend decrypts it with the tag's private key.
+
+To wire a bus to a fonek tag:
+
+1. Run a fonek backend (see [its README](https://github.com/lodjim/fonek#readme)) and
+   register the bus's tag as a device there.
+2. Set `FONEK_BASE_URL` and `FONEK_API_KEY` (a fonek API key, see its
+   [`docs/api.md`](https://github.com/lodjim/fonek/blob/main/docs/api.md)) in SunuShuttle's
+   environment.
+3. In the admin panel, under **Drivers**, set that bus's fonek tag to the device's name in
+   fonek.
+
+`GET /api/fallback` (see `docs/API.md`) then serves that bus's last known fonek position
+whenever it has no live GPS, polled at the same slow cadence as the rest of the idle
+student view — fonek reports lag minutes to hours, so this is a "last seen here" marker,
+shown muted on the map, never a substitute for the live feed. Leave `FONEK_BASE_URL` /
+`FONEK_API_KEY` unset to disable this entirely.
+
 ## Performance notes
 
 Built for hundreds of concurrent students on phones:
@@ -41,6 +67,7 @@ api/                  Vercel serverless functions (the backend)
   driver/               driver-only endpoints (require a driver token)
   admin/                admin-only endpoints (require an admin token)
   live.js               tiny high-frequency endpoint the student view polls
+  fallback.js           backup bus locator (fonek), polled at idle cadence
   state.js              cached full snapshot (stops, departures, message)
   board.js              public endpoint for "I'm boarding"
   routes.js             public route list
@@ -133,6 +160,15 @@ Built as an installable PWA: add to home screen on iOS and Android, works offlin
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Bug reports and small focused PRs welcome.
+
+## Acknowledgements
+
+- The optional backup locator is powered by [**fonek**](https://github.com/lodjim/fonek)
+  by [**lodjim**](https://github.com/lodjim), an open-source ESP32 BLE tag + backend for
+  tracking your own things over Apple's Find My network. See
+  [Backup locator (fonek)](#backup-locator-fonek) above.
+- Map tiles and data from [OpenStreetMap](https://www.openstreetmap.org/copyright)
+  contributors.
 
 ## License
 

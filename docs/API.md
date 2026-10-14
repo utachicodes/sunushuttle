@@ -21,6 +21,16 @@ Full static snapshot for one route (defaults to oldest). Cached 30s at the edge.
 Tiny high-frequency feed polled every ~2.5s. Edge-cached ~2s.
 → `{ buses: [{ id, label, lat, lng, speedKmh, heading, boarded, updatedAt }], at }`
 
+### `GET /api/fallback?route=<id>`
+Backup locator for buses with no live GPS right now: their last known position from a
+[fonek](https://github.com/lodjim/fonek) BLE tag, if one is configured for that bus
+(`fonek_device_name` on `buses`, set from the admin panel) and `FONEK_BASE_URL` /
+`FONEK_API_KEY` are set. Polled at the same low cadence as `/api/state` (idle polling),
+not the hot `/api/live` loop — fonek reports lag minutes to hours, so this is a rough
+"last seen here" position, not a live one. Buses already live are omitted, and a position
+older than 6 hours is dropped. Edge-cached 60s.
+→ `{ buses: [{ id, label, lat, lng, accuracy, updatedAt }], at }`
+
 ### `POST /api/board`
 Body `{ busId }`. Increments the open trip's headcount (best effort, public by design).
 → `{ boarded }` · `400` when no trip is open.
@@ -56,8 +66,9 @@ Idempotent close of the open trip.
 | `/api/admin/departures` | GET | — | `{ departures: ["HH:MM"] }` |
 | `/api/admin/departures` | POST | `{ time: "HH:MM" }` | `{ ok }` |
 | `/api/admin/departures` | DELETE | `{ time }` | `{ ok }` |
-| `/api/admin/drivers` | GET | — | `{ drivers: [{ id, label, driverName }] }` |
-| `/api/admin/drivers` | POST | `{ driverName, label, pin }` | `{ driver }` |
+| `/api/admin/drivers` | GET | — | `{ drivers: [{ id, label, driverName, fonekDeviceName }] }` |
+| `/api/admin/drivers` | POST | `{ driverName, label, pin, fonekDeviceName? }` | `{ driver }` |
+| `/api/admin/drivers` | PATCH | `{ id, fonekDeviceName }` | `{ driver }` — sets/clears the bus's fonek tag |
 | `/api/admin/drivers` | DELETE | `{ id }` | `{ ok }` |
 | `/api/admin/message` | GET | — | `{ message }` |
 | `/api/admin/message` | PUT | `{ message }` (160 chars) | `{ ok }` |
